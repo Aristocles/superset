@@ -690,7 +690,6 @@ class ColumnRef(BaseModel):
         ...,
         min_length=1,
         max_length=255,
-        pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_\s\-\.]*$",
         validation_alias=AliasChoices("name", "column_name"),
     )
     label: str | None = Field(None, max_length=500)
@@ -787,7 +786,6 @@ class FilterConfig(BaseModel):
         ...,
         min_length=1,
         max_length=255,
-        pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_\s\-\.]*$",
         validation_alias=AliasChoices("column", "col"),
     )
     op: Literal[
@@ -1200,7 +1198,6 @@ class BigNumberChartConfig(UnknownFieldCheckMixin):
         ),
         min_length=1,
         max_length=255,
-        pattern=r"^[a-zA-Z0-9_][a-zA-Z0-9_\s\-\.]*$",
     )
     time_grain: TimeGrain | None = Field(
         None,
