@@ -1346,7 +1346,10 @@ class TableChartConfig(UnknownFieldCheckMixin):
     @model_validator(mode="after")
     def validate_unique_column_labels(self) -> "TableChartConfig":
         """Ensure all column labels are unique."""
-        labels_seen = set()
+        # Key is (saved_metric, label) so a saved metric and a regular column
+        # with the same input name are not flagged as duplicates — saved metrics
+        # resolve to their actual casing from the dataset during normalization.
+        labels_seen: dict[tuple[bool, str], str] = {}
         duplicates = []
 
         for i, col in enumerate(self.columns):
@@ -1358,10 +1361,11 @@ class TableChartConfig(UnknownFieldCheckMixin):
             else:
                 label = col.label or col.name
 
-            if label in labels_seen:
+            key = (col.saved_metric, label)
+            if key in labels_seen:
                 duplicates.append(f"columns[{i}]: '{label}'")
             else:
-                labels_seen.add(label)
+                labels_seen[key] = f"columns[{i}]"
 
         if duplicates:
             raise ValueError(
@@ -1470,23 +1474,27 @@ class XYChartConfig(UnknownFieldCheckMixin):
     @model_validator(mode="after")
     def validate_unique_column_labels(self) -> "XYChartConfig":
         """Ensure all column labels are unique across x, y, and group_by."""
-        labels_seen: dict[str, str] = {}
+        # Key is (saved_metric, label) so a saved metric and a regular column
+        # with the same input name are not flagged as duplicates — saved metrics
+        # resolve to their actual casing from the dataset during normalization.
+        labels_seen: dict[tuple[bool, str], str] = {}
         duplicates: list[str] = []
 
         # Add x-axis label if present (x may be None, resolved later)
         if self.x is not None:
             x_label = self.x.label or self.x.name
-            labels_seen[x_label] = "x"
+            labels_seen[(self.x.saved_metric, x_label)] = "x"
 
         # Check Y-axis labels
         for i, col in enumerate(self.y):
             label = _metric_display_label(col)
-            if label in labels_seen:
+            key = (col.saved_metric, label)
+            if key in labels_seen:
                 duplicates.append(
-                    f"y[{i}]: '{label}' (conflicts with {labels_seen[label]})"
+                    f"y[{i}]: '{label}' (conflicts with {labels_seen[key]})"
                 )
             else:
-                labels_seen[label] = f"y[{i}]"
+                labels_seen[key] = f"y[{i}]"
 
         # Check group_by labels if present
         if self.group_by:
@@ -1497,13 +1505,14 @@ class XYChartConfig(UnknownFieldCheckMixin):
                     # we allow them through validation.
                     continue
                 group_label = col.label or col.name
-                if group_label in labels_seen:
+                group_key = (col.saved_metric, group_label)
+                if group_key in labels_seen:
                     duplicates.append(
                         f"group_by[{i}]: '{group_label}' "
-                        f"(conflicts with {labels_seen[group_label]})"
+                        f"(conflicts with {labels_seen[group_key]})"
                     )
                 else:
-                    labels_seen[group_label] = f"group_by[{i}]"
+                    labels_seen[group_key] = f"group_by[{i}]"
 
         if duplicates:
             raise ValueError(
