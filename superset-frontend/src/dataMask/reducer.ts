@@ -109,10 +109,28 @@ function fillNativeFilters(
 ) {
   filterConfig.forEach((filter: Filter) => {
     const dataMask = initialDataMask || {};
+    const loaded = dataMask[filter.id];
+
+    // The shallow spread of `loaded` would override `filter.defaultDataMask`
+    // even when `loaded.filterState` is empty (e.g. a permalink captured
+    // mid-initialization), wiping out a valid default. Only let `loaded`
+    // override `filterState`/`extraFormData` when it actually carries a value.
+    const loadedValue = loaded?.filterState?.value;
+    const loadedHasValue =
+      loadedValue !== undefined &&
+      loadedValue !== null &&
+      !(Array.isArray(loadedValue) && loadedValue.length === 0);
+
     mergedDataMask[filter.id] = {
       ...getInitialDataMask(filter.id), // take initial data
       ...filter.defaultDataMask, // if something new came from BE - take it
-      ...dataMask[filter.id],
+      ...loaded,
+      ...(loadedHasValue
+        ? {}
+        : {
+            filterState: filter.defaultDataMask?.filterState,
+            extraFormData: filter.defaultDataMask?.extraFormData,
+          }),
     };
     if (
       currentFilters &&
@@ -155,10 +173,18 @@ function updateDataMaskForFilterChanges(
     // Check if targets are equal
     const areTargetsEqual = isEqual(prevFilterDef?.targets, filter?.targets);
 
-    // Preserve state only if filter exists, has enableEmptyFilter=true and targets match
+    // Preserve state only when there's actually a value to preserve. Otherwise
+    // the empty existing state would wipe the (possibly newly-defined) default.
+    const existingValue = existingFilter?.filterState?.value;
+    const hasExistingValue =
+      existingValue !== undefined &&
+      existingValue !== null &&
+      !(Array.isArray(existingValue) && existingValue.length === 0);
+
     const shouldPreserveState =
       existingFilter &&
       areTargetsEqual &&
+      hasExistingValue &&
       (filter.controlValues?.enableEmptyFilter ||
         filter.controlValues?.defaultToFirstItem);
 
