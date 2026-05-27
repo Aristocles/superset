@@ -32,33 +32,19 @@ As of setuptools 81.0.0, the `pkg_resources` API is deprecated and will be remov
 
 ### Superset Codebase
 
-The Superset codebase has already migrated away from `pkg_resources` to the modern `importlib.metadata` API:
+The Superset codebase has fully migrated away from `pkg_resources` to the modern `importlib.metadata` API:
 
 - `superset/db_engine_specs/__init__.py` - Uses `from importlib.metadata import entry_points`
 - All entry point loading uses the modern API
+- The `setuptools<81` version pin has been removed
 
 ### Production Dependencies
 
 Some third-party dependencies may still use `pkg_resources`. Monitor your dependency tree for packages that haven't migrated yet.
 
-## Migration Path
+## Migration Reference
 
-### Short-term Solution
-
-Pin setuptools to version 80.x to prevent breaking changes:
-
-```python
-# requirements/base.in
-setuptools<81
-```
-
-This prevents the removal of `pkg_resources` while dependent packages are updated.
-
-### Long-term Solution
-
-Update all dependencies to use `importlib.metadata` instead of `pkg_resources`:
-
-#### Migration Example
+For extension developers who still need to migrate, here is the mapping from the deprecated API to the modern equivalent:
 
 **Old (deprecated):**
 ```python
@@ -78,14 +64,9 @@ eps = entry_points(group="group_name")
 
 ## Action Items
 
-### For Superset Maintainers
-1. The Superset codebase already uses `importlib.metadata`
-2. Monitor third-party dependencies for updates
-3. Update setuptools pin once the ecosystem is ready
-
 ### For Extension Developers
 1. **Update your packages** to use `importlib.metadata` instead of `pkg_resources`
-2. **Test with setuptools >= 81.0.0** once all packages are migrated
+2. **Test with setuptools >= 81.0.0** to ensure compatibility
 
 ## References
 
